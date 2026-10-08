@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+# rebuilt by scripts/build_index.py
+data/catalog.parquet
+data/text_embeddings.npy

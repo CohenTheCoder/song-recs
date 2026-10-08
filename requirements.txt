@@ -1,0 +1,14 @@
+# Pinned to versions that also run on Intel Macs (PyTorch stopped shipping Intel-Mac wheels after 2.2)
+torch>=2.2,<2.3; sys_platform == "darwin" and platform_machine == "x86_64"
+torch>=2.2; sys_platform != "darwin" or platform_machine != "x86_64"
+numpy<2
+transformers>=4.44,<4.50
+sentence-transformers>=3.0,<4
+huggingface_hub>=0.23,<1.0
+scikit-learn>=1.4
+pandas>=2.0
+pyarrow>=14
+tabulate>=0.9
+streamlit>=1.35
+plotly>=5.20
+pytest>=8.0
