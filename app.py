@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+import tour
 from song_recs import Recommender, Request
 from song_recs.features import EMB_PATH
 
@@ -35,6 +36,11 @@ def catalog_map(genre_weight: float, n: int = 4000) -> pd.DataFrame:
     return pd.DataFrame({"x": xy[:, 0], "y": xy[:, 1]}), idx
 
 
+def esc(text) -> str:
+    """Streamlit renders text between two $ signs as LaTeX math - escape them."""
+    return str(text).replace("$", "\\$")
+
+
 def spotify(track_id: str) -> str:
     return f"https://open.spotify.com/track/{track_id}"
 
@@ -42,7 +48,8 @@ def spotify(track_id: str) -> str:
 # ---------- sidebar ----------
 st.sidebar.title("🎧 Song Recs")
 st.sidebar.caption("Content-based + natural-language music recommendations")
-page = st.sidebar.radio("Steps", ["1 · Recommend", "2 · Map of the catalog", "How it works"])
+page = st.sidebar.radio("Steps", ["👋 Start here", "1 · Recommend", "2 · Map of the catalog", "How it works"],
+                        key="page")
 st.sidebar.divider()
 st.sidebar.markdown("**Tuning knobs**")
 text_weight = st.sidebar.slider("Sound ⟷ description", 0.0, 1.0, 0.4,
@@ -69,8 +76,49 @@ def add(i: int, where: str) -> None:
         ss[where].append(i)
 
 
+# ======================= START HERE =======================
+def _start_demo():
+    for q in ("Hotel California", "Free Fallin'"):
+        hits = rec.search(q, 1)
+        if len(hits):
+            add(int(hits.index[0]), "liked")
+    ss.page = "1 · Recommend"
+
+
+if page.startswith("👋"):
+    tour.render(
+        kicker="Recommender systems · Embeddings · NLP",
+        title="🎧 Song Recs",
+        subtitle="Tell it songs you love, or just describe a vibe, and get music that fits, "
+                 "with a reason for every pick.",
+        gradient=("#db2777", "#7c3aed"), accent="#db2777",
+        steps=[
+            {"emoji": "💿", "title": "Load 30,000 songs",
+             "text": "Real Spotify tracks with measurements like energy, danceability, mood and tempo.",
+             "hood": "Hugging Face dataset, de-duplicated"},
+            {"emoji": "🎚️", "title": "Turn sound into numbers",
+             "text": "Each song becomes a point in “sound space”. Songs that sound alike sit close together.",
+             "hood": "standardized audio-feature vectors"},
+            {"emoji": "✍️", "title": "Describe every song in words",
+             "text": "“Rock song. Slow, sad, acoustic.” Now you can search the catalog by typing a vibe.",
+             "hood": "🤗 sentence-transformer embeddings"},
+            {"emoji": "❤️", "title": "Learn your taste",
+             "text": "Your taste = the average of songs you like, nudged away from songs you skip.",
+             "hood": "Rocchio relevance feedback"},
+            {"emoji": "🌈", "title": "Keep it varied",
+             "text": "No ten copies of the same song. Variety is balanced against relevance, max 2 per artist.",
+             "hood": "Maximal Marginal Relevance (MMR)"},
+            {"emoji": "💬", "title": "Explain every pick",
+             "text": "“Similar energy and mood; genre: folk.” Recommendations you can trust.",
+             "hood": "feature-level explanations"},
+        ],
+        chips=["🤗 all-MiniLM-L6-v2", "🤗 Spotify tracks dataset", "scikit-learn", "NumPy", "Streamlit", "Plotly"],
+    )
+    st.button("▶  Try it: songs like Hotel California + Free Fallin'", type="primary", on_click=_start_demo)
+    st.caption("Or head to step 1 and search any song, or type a vibe like “rainy day jazz”.")
+
 # ======================= RECOMMEND =======================
-if page.startswith("1"):
+elif page.startswith("1"):
     st.header("Tell me what you like")
     c1, c2 = st.columns(2)
     with c1:
@@ -81,7 +129,7 @@ if page.startswith("1"):
                 st.caption("No match in the 30k-song catalog.")
             for i, r in hits.iterrows():
                 a, b = st.columns([5, 1])
-                a.markdown(f"**{r['track_name']}** · {r['artists']}  \n<small>{r['genre']} · popularity {r['popularity']}</small>",
+                a.markdown(f"**{esc(r['track_name'])}** · {esc(r['artists'])}  \n<small>{r['genre']} · popularity {r['popularity']}</small>",
                            unsafe_allow_html=True)
                 if b.button("➕", key=f"add-{i}", help="Add to songs you like"):
                     add(int(i), "liked")
@@ -94,7 +142,7 @@ if page.startswith("1"):
             st.markdown("**Songs you like**")
             for i in list(ss.liked):
                 a, b = st.columns([5, 1])
-                a.write(df.at[i, "label"])
+                a.markdown(esc(df.at[i, "label"]))
                 if b.button("✕", key=f"rm-{i}"):
                     ss.liked.remove(i)
                     st.rerun()
@@ -121,7 +169,7 @@ if page.startswith("1"):
     with left:
         for i, r in out.iterrows():
             a, b, c = st.columns([8, 1, 1])
-            a.markdown(f"**[{r['track_name']}]({spotify(r['track_id'])})** · {r['artists']}  \n"
+            a.markdown(f"**[{esc(r['track_name'])}]({spotify(r['track_id'])})** · {esc(r['artists'])}  \n"
                        f"<small>{r['genre']} · popularity {r['popularity']} · match {r['match']:.2f} · "
                        f"<i>{r['why']}</i></small>", unsafe_allow_html=True)
             if b.button("👍", key=f"up-{i}"):
